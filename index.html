@@ -2,41 +2,57 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Forest Shuffle Score Sheet</title>
+<title>Forest Shuffle Score Pad</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
 :root{
-  --green:#556b4e;
-  --parchment:#f4f1ea;
-  --stone:#7a6a55;
+  --bg:#f4f1ea;
+  --header:#4e5f42;
   --label:#dde4d3;
-  --header:#f7f5ef;
+  --table:#ffffff;
+  --border:#7a6a55;
   --total:#ece8df;
 }
 
 body{
   margin:0;
   font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
-  background:var(--parchment);
+  background:var(--bg);
+  color:#000;
+}
+
+body.dark{
+  --bg:#1e1e1e;
+  --header:#000;
+  --label:#333;
+  --table:#222;
+  --border:#666;
+  --total:#333;
+  color:#eee;
 }
 
 header{
-  background:linear-gradient(#5e6f4e,#4e5f42);
+  background:var(--header);
   color:#fff;
   padding:12px 16px;
   display:flex;
   justify-content:space-between;
   align-items:center;
-  font-weight:700;
-  font-size:20px;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.controls{
+  display:flex;
+  gap:8px;
 }
 
 button{
   border:1px solid #fff;
   background:transparent;
   color:#fff;
-  padding:6px 14px;
+  padding:6px 12px;
   border-radius:6px;
   font-weight:700;
   cursor:pointer;
@@ -44,17 +60,17 @@ button{
 
 .table-wrap{
   overflow:auto;
-  max-height:calc(100vh - 60px);
+  max-height:calc(100vh - 70px);
 }
 
 table{
   border-collapse:collapse;
   width:max-content;
-  background:#fff;
+  background:var(--table);
 }
 
 th,td{
-  border:2px solid var(--stone);
+  border:2px solid var(--border);
   text-align:center;
   height:52px;
   font-size:18px;
@@ -66,7 +82,7 @@ th:not(.label), td:not(.label){
   min-width:6.5ch;
 }
 
-/* label column */
+/* left column */
 th.label, td.label{
   width:1%;
   white-space:nowrap;
@@ -80,18 +96,16 @@ th.label, td.label{
   z-index:3;
 }
 
-/* sticky header */
+/* header row */
 thead th{
-  background:var(--header);
   position:sticky;
   top:0;
   z-index:4;
+  background:var(--table);
 }
 
-/* top-left corner */
 thead th.label{
   z-index:5;
-  background:var(--label);
   text-align:center;
 }
 
@@ -106,24 +120,21 @@ input.score{
   font-weight:600;
 }
 
-/* player name inputs */
+/* player names */
 input.name{
   width:100%;
   border:none;
   background:transparent;
   text-align:center;
-  font-size:14px;
   font-weight:700;
 }
 
 input:focus{
   outline:none;
-  background:#fffdf7;
 }
 
 td.total{
   background:var(--total);
-  font-size:20px;
   font-weight:900;
 }
 </style>
@@ -132,12 +143,19 @@ td.total{
 <body>
 
 <header>
-  <div>Forest Shuffle — Score Sheet</div>
-  <button id="reset">Reset All</button>
+<div>Forest Shuffle Score Pad</div>
+
+<div class="controls">
+<button id="newRound">New Round</button>
+<button id="reset">Reset All</button>
+<button id="night">Night Mode</button>
+</div>
+
 </header>
 
 <div class="table-wrap">
 <table id="scoreTable">
+
 <thead>
 <tr>
 <th class="label">🐿️</th>
@@ -148,89 +166,109 @@ td.total{
 <th><input class="name" placeholder="P5"></th>
 </tr>
 </thead>
+
 <tbody></tbody>
+
 </table>
 </div>
 
 <script>
-const players = 5;
-const tbody = document.querySelector("#scoreTable tbody");
+const players=5
+const tbody=document.querySelector("#scoreTable tbody")
 
 function numOrZero(v){
-const n = Number(v);
-return Number.isFinite(n) ? n : 0;
+const n=Number(v)
+return Number.isFinite(n)?n:0
 }
 
-const rows = [
-{ key:"trees", label:"Trees" },
-{ key:"top", label:"Top" },
-{ key:"bottom", label:"Bottom" },
-{ key:"sides", label:"Left / Right" },
-{ key:"cave", label:"Cave" },
-{ key:"total", label:"Σ Total", total:true }
-];
+/* Forest Shuffle rows (same as Dartmoor except no Moors) */
 
-const inputsByPlayer = Array.from({length: players}, () => []);
-const totalCells = [];
+const rows=[
+{key:"trees",label:"Trees"},
+{key:"top",label:"Top"},
+{key:"bottom",label:"Bottom"},
+{key:"sides",label:"Left / Right"},
+{key:"cave",label:"Cave"},
+{key:"total",label:"Σ Total",total:true}
+]
+
+const inputsByPlayer=Array.from({length:players},()=>[])
+const totals=[]
 
 rows.forEach(row=>{
-const tr=document.createElement("tr");
+const tr=document.createElement("tr")
 
-const label=document.createElement("td");
-label.className="label";
-label.textContent=row.label;
-tr.appendChild(label);
+const label=document.createElement("td")
+label.className="label"
+label.textContent=row.label
+tr.appendChild(label)
 
 for(let p=0;p<players;p++){
 
-const td=document.createElement("td");
+const td=document.createElement("td")
 
 if(row.total){
-td.className="total";
-td.textContent="0";
-totalCells[p]=td;
+
+td.className="total"
+td.textContent="0"
+totals[p]=td
+
+}else{
+
+const input=document.createElement("input")
+input.type="number"
+input.className="score"
+input.value=""
+
+input.addEventListener("input",updateTotals)
+
+td.appendChild(input)
+inputsByPlayer[p].push(input)
+
 }
-else{
 
-const input=document.createElement("input");
-input.type="number";
-input.className="score";
-input.value="";
-
-input.addEventListener("input",updateTotals);
-
-td.appendChild(input);
-inputsByPlayer[p].push(input);
+tr.appendChild(td)
 }
 
-tr.appendChild(td);
-}
-
-tbody.appendChild(tr);
-});
+tbody.appendChild(tr)
+})
 
 function updateTotals(){
 
 for(let p=0;p<players;p++){
 
-let sum=0;
+let sum=0
 
-for(const inp of inputsByPlayer[p]){
-sum+=numOrZero(inp.value);
+for(const inp of inputsByPlayer[p])
+sum+=numOrZero(inp.value)
+
+totals[p].textContent=sum
 }
 
-totalCells[p].textContent=String(sum);
 }
 
-}
+/* reset all */
 
 document.getElementById("reset").onclick=()=>{
-document.querySelectorAll("input.score").forEach(i=>i.value="");
-document.querySelectorAll("input.name").forEach(i=>i.value="");
-updateTotals();
-};
+document.querySelectorAll("input.score").forEach(i=>i.value="")
+document.querySelectorAll("input.name").forEach(i=>i.value="")
+updateTotals()
+}
 
-updateTotals();
+/* new round (clears scores but keeps names) */
+
+document.getElementById("newRound").onclick=()=>{
+document.querySelectorAll("input.score").forEach(i=>i.value="")
+updateTotals()
+}
+
+/* night mode */
+
+document.getElementById("night").onclick=()=>{
+document.body.classList.toggle("dark")
+}
+
+updateTotals()
 </script>
 
 </body>
